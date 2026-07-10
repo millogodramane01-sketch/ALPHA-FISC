@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>ALPHA FISC POUR LES DÉBUTANTS - Logiciel de Mise en Page Pro</title>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+        
+        * { 
+            box-sizing: border-box; 
+            -webkit-print-color-adjust: exact; 
+        }
+        body { 
+            font-family: 'Roboto', sans-serif; 
+            background: #2c3e50; 
+            margin: 0; 
+            padding: 0; 
+            color: #333; 
+        }
+        .no-print { 
+            padding: 20px; 
+            text-align: center; 
+            background: #34495e; 
+            color: white;
+            position: sticky; 
+            top: 0; 
+            z-index: 9999; 
+            border-bottom: 5px solid #27ae60;
+        }
+        .input-group { 
+            margin-bottom: 10px; 
+        }
+        input[type="text"] { 
+            width: 60%; 
+            padding: 12px; 
+            border-radius: 5px; 
+            border: none; 
+            font-size: 16px; 
+            font-weight: bold; 
+        }
+        textarea { 
+            width: 95%; 
+            height: 180px; 
+            padding: 12px; 
+            margin-top: 10px; 
+            border-radius: 5px; 
+            font-size: 14px; 
+            font-family: monospace;
+            line-height: 1.4;
+        }
+        button { 
+            padding: 12px 25px; 
+            cursor: pointer; 
+            border: none; 
+            border-radius: 50px; 
+            font-weight: bold; 
+            margin: 5px; 
+            color: white; 
+            transition: 0.3s; 
+        }
+        .btn-gen { 
+            background: #27ae60; 
+        }
+        .btn-pdf { 
+            background: #2980b9; 
+        }
+        #document-container { 
+            background: #1a1a1a; 
+            padding: 40px 0; 
+        }
+        .page { 
+            width: 210mm; 
+            height: 297mm; 
+            padding: 10mm; 
+            margin: 0 auto 30px auto; 
+            background: white; 
+            position: relative; 
+            overflow: hidden; 
+            page-break-after: always;
+        }
+        .main-border {
+            border: 8px double #000; 
+            position: absolute;
+            top: 10mm; 
+            bottom: 10mm; 
+            left: 10mm; 
+            right: 10mm;
+            padding: 12mm; 
+            padding-bottom: 25mm; 
+            display: flex; 
+            flex-direction: column;
+        }
+        .header-top { 
+            display: flex; 
+            justify-content: space-between; 
+            font-weight: bold; 
+            font-size: 12px; 
+            border-bottom: 1px solid #000; 
+            margin-bottom: 10px; 
+            padding-bottom: 5px;
+        }
+        .fb-link { 
+            color: #000; 
+        }
+        .brand-top { 
+            font-style: italic; 
+        }
+        .titre-cadre { 
+            border: 3px solid #000; 
+            padding: 15px; 
+            text-align: center; 
+            margin-bottom: 25px;
+            background: #f9f9f9; 
+            box-shadow: 4px 4px 0px #000;
+        }
+        .titre-cadre h1 { 
+            margin: 0; 
+            font-size: 26px; 
+            text-transform: uppercase; 
+            font-weight: 700; 
+        }
+        .content-area { 
+            flex-grow: 1; 
+            position: relative; 
+        }
+        .question-box { 
+            margin-bottom: 25px; 
+            break-inside: auto; 
+        }
+        .q-text { 
+            font-weight: bold; 
+            font-size: 16px; 
+            display: block; 
+            margin-bottom: 8px; 
+            text-align: justify; 
+            line-height: 1.5; 
+        }
+        .opt { 
+            display: block; 
+            font-size: 15px; 
+            margin-left: 25px; 
+            margin-bottom: 5px; 
+            line-height: 1.4; 
+        }
+        .corr-table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-bottom: 20px; 
+        }
+        .corr-table td { 
+            border: 2px solid black; 
+            text-align: center; 
+            padding: 8px; 
+            font-weight: bold; 
+        }
+        .row-num { 
+            background: #eee; 
+            font-size: 12px; 
+        }
+        .row-ans td { 
+            font-size: 20px; 
+            color: #c0392b; 
+        }
+        .justif-section {
+            margin-top: 20px;
+            border-top: 2px dashed #000;
+            padding-top: 15px;
+        }
+        .justif-title {
+            font-size: 16px;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            text-decoration: underline;
+        }
+        .justif-item {
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-align: justify;
+            line-height: 1.4;
+        }
+        .footer-brand { 
+            text-align: center; 
+            font-size: 12px; 
+            margin-top: auto; 
+            border-top: 1px solid #000; 
+            padding-top: 5px; 
+        }
+        .page-number-box {
+            position: absolute; 
+            bottom: 5mm; 
+            right: 5mm;
+            border: 2px solid #000; 
+            padding: 3px 10px;
+            font-weight: bold; 
+            font-size: 12px; 
+            background: white;
+        }
+        @media print {
+            .no-print { display: none; }
+            body { background: white; }
+            #document-container { padding: 0; background: none; }
+            .page { margin: 0; border: none; box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="no-print">
+    <div class="input-group">
+        <input type="text" id="titreExamen" placeholder="TITRE DE L'EXAMEN (Ex: CONCOURS POLICE 2026)">
+    </div>
+    <textarea id="inputQCM" placeholder="Exemple de format à respecter (laissez une ligne vide entre chaque bloc de question) :&#10;&#10;1) Quelle est la capitale du Burkina Faso ?&#10;A) Bobo-Dioulasso&#10;B) Ouagadougou&#10;C) Koudougou&#10;D) Fada N'Gourma&#10;Réponse: B&#10;Justification: Ouagadougou est la capitale politique et administrative du pays."></textarea>
+    <div class="btns">
+        <button class="btn-gen" onclick="engine()">GÉNÉRER LE DOCUMENT PRO</button>
+        <button class="btn-pdf" onclick="window.print()">IMPRIMER / PDF</button>
+    </div>
+</div>
+
+<div id="ghost-measure" style="width: 160mm; position: absolute; visibility: hidden; pointer-events: none;"></div>
+<div id="document-container"></div>
+
+<script>
+function engine() {
+    const titre = document.getElementById('titreExamen').value || "EXAMEN DE CULTURE GÉNÉRALE";
+    const raw = document.getElementById('inputQCM').value;
+    const container = document.getElementById('document-container');
+    const ghost = document.getElementById('ghost-measure');
+    
+    container.innerHTML = "";
+    if(!raw.trim()) return;
+
+    const blocks = raw.trim().split(/\n\s*\n/);
+    let corrections = [];
+    let allHtmlContent = [];
+
+    blocks.forEach((block) => {
+        const lines = block.split('\n').map(l => l.trim()).filter(l => l !== "");
+        let q = "", opts = [], ans = "", justif = "";
+        
+        lines.forEach(l => {
+            if(/^\d+[\.\)]/.test(l)) q = l;
+            else if(/^[A-E][\.\)]/.test(l)) opts.push(l);
+            else if(l.toLowerCase().includes("réponse")) {
+                let parts = l.split(':');
+                ans = parts[1] ? parts[1].trim() : "?";
+            }
+            else if(l.toLowerCase().includes("justification")) {
+                let parts = l.split(':');
+                justif = parts[1] ? parts[1].trim() : "";
+            }
+        });
+
+        if(q) {
+            let qNum = corrections.length + 1;
+            corrections.push({ n: qNum, r: ans, j: justif });
+            allHtmlContent.push(`<div class="question-box"><span class="q-text">${q}</span>${opts.map(o => `<span class="opt">${o}</span>`).join('')}</div>`);
+        }
+    });
+
+    let pages = [];
+    let currentPageContent = [];
+    let currentHeight = 0;
+    const PAGE_MAX_MM = 230; 
+
+    allHtmlContent.forEach((qHtml) => {
+        ghost.innerHTML = qHtml;
+        const h = ghost.offsetHeight * 0.264583;
+        let limit = (pages.length === 0) ? PAGE_MAX_MM - 45 : PAGE_MAX_MM;
+
+        if (currentHeight + (h/2) > limit) { 
+            pages.push(currentPageContent);
+            currentPageContent = [qHtml];
+            currentHeight = h;
+        } else {
+            currentPageContent.push(qHtml);
+            currentHeight += h;
+        }
+    });
+    pages.push(currentPageContent);
+
+    pages.forEach((pageItems, i) => {
+        let pageDiv = document.createElement('div');
+        pageDiv.className = 'page';
+        let headerTitre = (i === 0) ? `<div class="titre-cadre"><h1>${titre}</h1></div>` : "";
+        pageDiv.innerHTML = `
+            <div class="main-border">
+                <div class="header-top">
+                    <span class="fb-link">Page Facebook : ALPHA FISC POUR LES DÉBUTANTS</span>
+                    <span class="brand-top">WhatsApp : +226 66 47 70 70</span>
+                </div>
+                ${headerTitre}
+                <div class="content-area">${pageItems.join('')}</div>
+                <div class="footer-brand"><em>ALPHA FISC POUR LES DÉBUTANTS</em></div>
+                <div class="page-number-box">Page <span class="p-idx"></span> / <span class="p-tot"></span></div>
+            </div>`;
+        container.appendChild(pageDiv);
+    });
+
+    // Proposition de Correction (Tableaux + Justifications groupées)
+    let currentCorrTablesHtml = "";
+    let justificationItemsHtml = "";
+
+    for (let i = 0; i < corrections.length; i += 10) {
+        const chunk = corrections.slice(i, i + 10);
+        let table = `<table class="corr-table"><tr class="row-num">`;
+        chunk.forEach(c => table += `<td>Q${c.n}</td>`);
+        table += `</tr><tr class="row-ans">`;
+        chunk.forEach(c => table += `<td>${c.r}</td>`);
+        table += `</tr></table>`;
+        currentCorrTablesHtml += table;
+    }
+
+    // Récupération des justifications existantes
+    corrections.forEach(c => {
+        if(c.j) {
+            justificationItemsHtml += `<div class="justif-item"><strong>Q${c.n} :</strong> ${c.j}</div>`;
+        }
+    });
+
+    // Bloc final complet de correction
+    let finalCorrectionContent = currentCorrTablesHtml;
+    if(justificationItemsHtml) {
+        finalCorrectionContent += `
+            <div class="justif-section">
+                <div class="justif-title">Justifications et Explications</div>
+                ${justificationItemsHtml}
+            </div>`;
+    }
+
+    // Génération de la page de correction (S'ajuste ou crée plusieurs pages si nécessaire)
+    let p = document.createElement('div');
+    p.className = 'page';
+    p.innerHTML = `
+        <div class="main-border">
+            <div class="header-top">
+                <span class="fb-link">Page Facebook : ALPHA FISC POUR LES DÉBUTANTS</span>
+                <span class="brand-top">WhatsApp : +226 66 47 70 70</span>
+            </div>
+            <div class="titre-cadre"><h1>PROPOSITION DE CORRECTION</h1></div>
+            <div class="content-area">${finalCorrectionContent}</div>
+            <div class="footer-brand"><em>ALPHA FISC POUR LES DÉBUTANTS</em></div>
+            <div class="page-number-box">Page <span class="p-idx"></span> / <span class="p-tot"></span></div>
+        </div>`;
+    container.appendChild(p);
+
+    const allPages = container.querySelectorAll('.page');
+    allPages.forEach((p, idx) => {
+        p.querySelector('.p-idx').innerText = idx + 1;
+        p.querySelector('.p-tot').innerText = allPages.length;
+    });
+
+    if (typeof MathJax !== 'undefined') {
+        MathJax.typesetPromise();
+    }
+}
+</script>
+</body>
+</html>
