@@ -93,7 +93,7 @@
             left: 10mm; 
             right: 10mm;
             padding: 12mm; 
-            padding-bottom: 25mm; 
+            padding-bottom: 25mm; /* Zone de sécurité basse */
             display: flex; 
             flex-direction: column;
         }
@@ -132,7 +132,6 @@
         }
         .question-box { 
             margin-bottom: 25px; 
-            break-inside: auto; 
         }
         .q-text { 
             font-weight: bold; 
@@ -169,7 +168,7 @@
             color: #c0392b; 
         }
         .justif-section {
-            margin-top: 20px;
+            margin-top: 10px;
             border-top: 2px dashed #000;
             padding-top: 15px;
         }
@@ -182,7 +181,7 @@
         }
         .justif-item {
             font-size: 14px;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             text-align: justify;
             line-height: 1.4;
         }
@@ -228,6 +227,27 @@
 <div id="document-container"></div>
 
 <script>
+function createPageElement(titreExamen, pageIndex, totalPlaceholder = false, customTitle = "") {
+    let pageDiv = document.createElement('div');
+    pageDiv.className = 'page';
+    
+    let topHeaderTitle = customTitle ? `<h1>${customTitle}</h1>` : `<h1>${titreExamen}</h1>`;
+    let headerTitre = (pageIndex === 1 || customTitle) ? `<div class="titre-cadre">${topHeaderTitle}</div>` : "";
+    
+    pageDiv.innerHTML = `
+        <div class="main-border">
+            <div class="header-top">
+                <span class="fb-link">Page Facebook : ALPHA FISC POUR LES DÉBUTANTS</span>
+                <span class="brand-top">WhatsApp : +226 66 47 70 70</span>
+            </div>
+            ${headerTitre}
+            <div class="content-area"></div>
+            <div class="footer-brand"><em>ALPHA FISC POUR LES DÉBUTANTS</em></div>
+            <div class="page-number-box">Page <span class="p-idx">${pageIndex}</span> / <span class="p-tot"></span></div>
+        </div>`;
+    return pageDiv;
+}
+
 function engine() {
     const titre = document.getElementById('titreExamen').value || "EXAMEN DE CULTURE GÉNÉRALE";
     const raw = document.getElementById('inputQCM').value;
@@ -239,8 +259,9 @@ function engine() {
 
     const blocks = raw.trim().split(/\n\s*\n/);
     let corrections = [];
-    let allHtmlContent = [];
+    let allQuestionsHtml = [];
 
+    // 1. Analyse et extraction des données
     blocks.forEach((block) => {
         const lines = block.split('\n').map(l => l.trim()).filter(l => l !== "");
         let q = "", opts = [], ans = "", justif = "";
@@ -261,102 +282,117 @@ function engine() {
         if(q) {
             let qNum = corrections.length + 1;
             corrections.push({ n: qNum, r: ans, j: justif });
-            allHtmlContent.push(`<div class="question-box"><span class="q-text">${q}</span>${opts.map(o => `<span class="opt">${o}</span>`).join('')}</div>`);
+            allQuestionsHtml.push(`<div class="question-box"><span class="q-text">${q}</span>${opts.map(o => `<span class="opt">${o}</span>`).join('')}</div>`);
         }
     });
 
-    let pages = [];
-    let currentPageContent = [];
-    let currentHeight = 0;
-    const PAGE_MAX_MM = 230; 
+    // Hauteur maximale utilisable dans la bordure (en mm) avec marge de sécurité
+    const MAX_ZONE_HEIGHT_MM = 210; 
+    let pageNum = 1;
+    
+    // 2. Distribution continue des Questions
+    let currentPage = createPageElement(titre, pageNum);
+    container.appendChild(currentPage);
+    let currentContentArea = currentPage.querySelector('.content-area');
+    let currentHeightMM = 45; // Consommation initiale estimée du titre cadre en p1
 
-    allHtmlContent.forEach((qHtml) => {
+    allQuestionsHtml.forEach((qHtml) => {
         ghost.innerHTML = qHtml;
-        const h = ghost.offsetHeight * 0.264583;
-        let limit = (pages.length === 0) ? PAGE_MAX_MM - 45 : PAGE_MAX_MM;
+        const qHeightMM = ghost.offsetHeight * 0.264583;
 
-        if (currentHeight + (h/2) > limit) { 
-            pages.push(currentPageContent);
-            currentPageContent = [qHtml];
-            currentHeight = h;
-        } else {
-            currentPageContent.push(qHtml);
-            currentHeight += h;
+        // Si la question dépasse, on laisse une ligne blanche de sécurité et on saute de page
+        if (currentHeightMM + qHeightMM > MAX_ZONE_HEIGHT_MM) {
+            pageNum++;
+            currentPage = createPageElement(titre, pageNum);
+            container.appendChild(currentPage);
+            currentContentArea = currentPage.querySelector('.content-area');
+            currentHeightMM = 0; // Pas de titre cadre en page 2+
         }
-    });
-    pages.push(currentPageContent);
-
-    pages.forEach((pageItems, i) => {
-        let pageDiv = document.createElement('div');
-        pageDiv.className = 'page';
-        let headerTitre = (i === 0) ? `<div class="titre-cadre"><h1>${titre}</h1></div>` : "";
-        pageDiv.innerHTML = `
-            <div class="main-border">
-                <div class="header-top">
-                    <span class="fb-link">Page Facebook : ALPHA FISC POUR LES DÉBUTANTS</span>
-                    <span class="brand-top">WhatsApp : +226 66 47 70 70</span>
-                </div>
-                ${headerTitre}
-                <div class="content-area">${pageItems.join('')}</div>
-                <div class="footer-brand"><em>ALPHA FISC POUR LES DÉBUTANTS</em></div>
-                <div class="page-number-box">Page <span class="p-idx"></span> / <span class="p-tot"></span></div>
-            </div>`;
-        container.appendChild(pageDiv);
+        
+        currentContentArea.innerHTML += qHtml;
+        currentHeightMM += qHeightMM + 6; // Compte la marge basse entre blocs
     });
 
-    // Proposition de Correction (Tableaux + Justifications groupées)
-    let currentCorrTablesHtml = "";
-    let justificationItemsHtml = "";
+    // 3. Distribution continue de la Correction (Grilles + Justifications)
+    pageNum++;
+    let corrPage = createPageElement(titre, pageNum, true, "PROPOSITION DE CORRECTION");
+    container.appendChild(corrPage);
+    let corrContentArea = corrPage.querySelector('.content-area');
+    let corrHeightMM = 45; // Hauteur du titre cadre de correction
 
+    // Génération des grilles par paquet de 10
     for (let i = 0; i < corrections.length; i += 10) {
         const chunk = corrections.slice(i, i + 10);
-        let table = `<table class="corr-table"><tr class="row-num">`;
-        chunk.forEach(c => table += `<td>Q${c.n}</td>`);
-        table += `</tr><tr class="row-ans">`;
-        chunk.forEach(c => table += `<td>${c.r}</td>`);
-        table += `</tr></table>`;
-        currentCorrTablesHtml += table;
-    }
+        let tableHtml = `<table class="corr-table"><tr class="row-num">`;
+        chunk.forEach(c => tableHtml += `<td>Q${c.n}</td>`);
+        tableHtml += `</tr><tr class="row-ans">`;
+        chunk.forEach(c => tableHtml += `<td>${c.r}</td>`);
+        tableHtml += `</tr></table>`;
 
-    // Récupération des justifications existantes
-    corrections.forEach(c => {
-        if(c.j) {
-            justificationItemsHtml += `<div class="justif-item"><strong>Q${c.n} :</strong> ${c.j}</div>`;
+        ghost.innerHTML = tableHtml;
+        const tableHeightMM = ghost.offsetHeight * 0.264583;
+
+        if (corrHeightMM + tableHeightMM > MAX_ZONE_HEIGHT_MM) {
+            pageNum++;
+            corrPage = createPageElement(titre, pageNum, true, "PROPOSITION DE CORRECTION (Suite)");
+            container.appendChild(corrPage);
+            corrContentArea = corrPage.querySelector('.content-area');
+            corrHeightMM = 45;
         }
-    });
-
-    // Bloc final complet de correction
-    let finalCorrectionContent = currentCorrTablesHtml;
-    if(justificationItemsHtml) {
-        finalCorrectionContent += `
-            <div class="justif-section">
-                <div class="justif-title">Justifications et Explications</div>
-                ${justificationItemsHtml}
-            </div>`;
+        corrContentArea.innerHTML += tableHtml;
+        corrHeightMM += tableHeightMM + 5;
     }
 
-    // Génération de la page de correction (S'ajuste ou crée plusieurs pages si nécessaire)
-    let p = document.createElement('div');
-    p.className = 'page';
-    p.innerHTML = `
-        <div class="main-border">
-            <div class="header-top">
-                <span class="fb-link">Page Facebook : ALPHA FISC POUR LES DÉBUTANTS</span>
-                <span class="brand-top">WhatsApp : +226 66 47 70 70</span>
-            </div>
-            <div class="titre-cadre"><h1>PROPOSITION DE CORRECTION</h1></div>
-            <div class="content-area">${finalCorrectionContent}</div>
-            <div class="footer-brand"><em>ALPHA FISC POUR LES DÉBUTANTS</em></div>
-            <div class="page-number-box">Page <span class="p-idx"></span> / <span class="p-tot"></span></div>
-        </div>`;
-    container.appendChild(p);
+    // Extraction et distribution continue des justifications
+    let hasJustifications = corrections.some(c => c.j);
+    if (hasJustifications) {
+        let sectionHeaderHtml = `<div class="justif-section"><div class="justif-title">Justifications et Explications</div></div>`;
+        ghost.innerHTML = sectionHeaderHtml;
+        const sectionHeaderHeightMM = ghost.offsetHeight * 0.264583;
 
+        if (corrHeightMM + sectionHeaderHeightMM > MAX_ZONE_HEIGHT_MM) {
+            pageNum++;
+            corrPage = createPageElement(titre, pageNum, true, "JUSTIFICATIONS & EXPLICATIONS");
+            container.appendChild(corrPage);
+            corrContentArea = corrPage.querySelector('.content-area');
+            corrHeightMM = 45;
+        } else {
+            corrContentArea.innerHTML += sectionHeaderHtml;
+            corrHeightMM += sectionHeaderHeightMM;
+        }
+
+        // Cibler ou injecter dans l'enveloppe .justif-section active
+        let targetSection = corrContentArea.querySelector('.justif-section') || corrContentArea;
+
+        corrections.forEach(c => {
+            if (c.j) {
+                let itemHtml = `<div class="justif-item"><strong>Q${c.n} :</strong> ${c.j}</div>`;
+                ghost.innerHTML = itemHtml;
+                const itemHeightMM = ghost.offsetHeight * 0.264583;
+
+                if (corrHeightMM + itemHeightMM > MAX_ZONE_HEIGHT_MM) {
+                    pageNum++;
+                    corrPage = createPageElement(titre, pageNum, true, "JUSTIFICATIONS & EXPLICATIONS (Suite)");
+                    container.appendChild(corrPage);
+                    corrContentArea = corrPage.querySelector('.content-area');
+                    
+                    corrContentArea.innerHTML += `<div class="justif-section"></div>`;
+                    targetSection = corrContentArea.querySelector('.justif-section');
+                    corrHeightMM = 45;
+                }
+                targetSection.innerHTML += itemHtml;
+                corrHeightMM += itemHeightMM;
+            }
+        });
+    }
+
+    // 4. Mise à jour dynamique du nombre total de pages
     const allPages = container.querySelectorAll('.page');
-    allPages.forEach((p, idx) => {
-        p.querySelector('.p-idx').innerText = idx + 1;
+    allPages.forEach((p) => {
         p.querySelector('.p-tot').innerText = allPages.length;
     });
 
+    // Rendu des formules mathématiques éventuelles
     if (typeof MathJax !== 'undefined') {
         MathJax.typesetPromise();
     }
