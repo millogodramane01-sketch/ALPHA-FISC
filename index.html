@@ -93,7 +93,7 @@
             left: 10mm; 
             right: 10mm;
             padding: 12mm; 
-            padding-bottom: 25mm; /* Zone de sécurité basse */
+            padding-bottom: 25mm; /* Évite que le texte chevauche la bordure basse */
             display: flex; 
             flex-direction: column;
         }
@@ -131,7 +131,7 @@
             position: relative; 
         }
         .question-box { 
-            margin-bottom: 25px; 
+            margin-bottom: 20px; 
         }
         .q-text { 
             font-weight: bold; 
@@ -227,7 +227,7 @@
 <div id="document-container"></div>
 
 <script>
-function createPageElement(titreExamen, pageIndex, totalPlaceholder = false, customTitle = "") {
+function createPageElement(titreExamen, pageIndex, customTitle = "") {
     let pageDiv = document.createElement('div');
     pageDiv.className = 'page';
     
@@ -282,45 +282,67 @@ function engine() {
         if(q) {
             let qNum = corrections.length + 1;
             corrections.push({ n: qNum, r: ans, j: justif });
-            allQuestionsHtml.push(`<div class="question-box"><span class="q-text">${q}</span>${opts.map(o => `<span class="opt">${o}</span>`).join('')}</div>`);
+            
+            // On sépare chaque sous-élément (le texte de la question d'un côté, et les propositions de l'autre)
+            let questionLinesHtml = [];
+            questionLinesHtml.push(`<span class="q-text">${q}</span>`);
+            opts.forEach(o => {
+                questionLinesHtml.push(`<span class="opt">${o}</span>`);
+            });
+            allQuestionsHtml.push(questionLinesHtml);
         }
     });
 
-    // Hauteur maximale utilisable dans la bordure (en mm) avec marge de sécurité
-    const MAX_ZONE_HEIGHT_MM = 210; 
+    const MAX_ZONE_HEIGHT_MM = 212; // Capacité totale d'impression à l'intérieur du cadre
     let pageNum = 1;
     
-    // 2. Distribution continue des Questions
     let currentPage = createPageElement(titre, pageNum);
     container.appendChild(currentPage);
     let currentContentArea = currentPage.querySelector('.content-area');
-    let currentHeightMM = 45; // Consommation initiale estimée du titre cadre en p1
+    let currentHeightMM = 45; // Hauteur initiale consommée par le grand titre cadre en p1
 
-    allQuestionsHtml.forEach((qHtml) => {
-        ghost.innerHTML = qHtml;
-        const qHeightMM = ghost.offsetHeight * 0.264583;
+    // 2. Écoulement continu ligne par ligne pour remplir au maximum le bas de page
+    allQuestionsHtml.forEach((elementsArray, qIdx) => {
+        // Enveloppe collective de la question pour conserver l'espacement
+        let qBox = document.createElement('div');
+        qBox.className = 'question-box';
+        currentContentArea.appendChild(qBox);
 
-        // Si la question dépasse, on laisse une ligne blanche de sécurité et on saute de page
-        if (currentHeightMM + qHeightMM > MAX_ZONE_HEIGHT_MM) {
-            pageNum++;
-            currentPage = createPageElement(titre, pageNum);
-            container.appendChild(currentPage);
-            currentContentArea = currentPage.querySelector('.content-area');
-            currentHeightMM = 0; // Pas de titre cadre en page 2+
-        }
-        
-        currentContentArea.innerHTML += qHtml;
-        currentHeightMM += qHeightMM + 6; // Compte la marge basse entre blocs
+        elementsArray.forEach((elHtml, lineIdx) => {
+            ghost.innerHTML = elHtml;
+            const elHeightMM = ghost.offsetHeight * 0.264583;
+
+            // Si cette ligne spécifique dépasse le bas du cadre, on change proprement de page
+            if (currentHeightMM + elHeightMM > MAX_ZONE_HEIGHT_MM) {
+                pageNum++;
+                currentPage = createPageElement(titre, pageNum);
+                container.appendChild(currentPage);
+                currentContentArea = currentPage.querySelector('.content-area');
+                currentHeightMM = 0;
+
+                // On crée une nouvelle enveloppe sur la nouvelle page pour recevoir la suite de la question
+                qBox = document.createElement('div');
+                qBox.className = 'question-box';
+                currentContentArea.appendChild(qBox);
+            }
+
+            // Injection immédiate de l'élément (Question ou Option)
+            qBox.innerHTML += elHtml;
+            currentHeightMM += elHeightMM;
+        });
+
+        // Ajouter une marge de séparation après chaque bloc QCM
+        currentHeightMM += 6; 
     });
 
     // 3. Distribution continue de la Correction (Grilles + Justifications)
     pageNum++;
-    let corrPage = createPageElement(titre, pageNum, true, "PROPOSITION DE CORRECTION");
+    let corrPage = createPageElement(titre, pageNum, "PROPOSITION DE CORRECTION");
     container.appendChild(corrPage);
     let corrContentArea = corrPage.querySelector('.content-area');
-    let corrHeightMM = 45; // Hauteur du titre cadre de correction
+    let corrHeightMM = 45;
 
-    // Génération des grilles par paquet de 10
+    // Génération continue des tableaux de grilles
     for (let i = 0; i < corrections.length; i += 10) {
         const chunk = corrections.slice(i, i + 10);
         let tableHtml = `<table class="corr-table"><tr class="row-num">`;
@@ -334,7 +356,7 @@ function engine() {
 
         if (corrHeightMM + tableHeightMM > MAX_ZONE_HEIGHT_MM) {
             pageNum++;
-            corrPage = createPageElement(titre, pageNum, true, "PROPOSITION DE CORRECTION (Suite)");
+            corrPage = createPageElement(titre, pageNum, "PROPOSITION DE CORRECTION (Suite)");
             container.appendChild(corrPage);
             corrContentArea = corrPage.querySelector('.content-area');
             corrHeightMM = 45;
@@ -343,7 +365,7 @@ function engine() {
         corrHeightMM += tableHeightMM + 5;
     }
 
-    // Extraction et distribution continue des justifications
+    // Extraction et distribution continue ligne par ligne des justifications
     let hasJustifications = corrections.some(c => c.j);
     if (hasJustifications) {
         let sectionHeaderHtml = `<div class="justif-section"><div class="justif-title">Justifications et Explications</div></div>`;
@@ -352,7 +374,7 @@ function engine() {
 
         if (corrHeightMM + sectionHeaderHeightMM > MAX_ZONE_HEIGHT_MM) {
             pageNum++;
-            corrPage = createPageElement(titre, pageNum, true, "JUSTIFICATIONS & EXPLICATIONS");
+            corrPage = createPageElement(titre, pageNum, "JUSTIFICATIONS & EXPLICATIONS");
             container.appendChild(corrPage);
             corrContentArea = corrPage.querySelector('.content-area');
             corrHeightMM = 45;
@@ -361,7 +383,6 @@ function engine() {
             corrHeightMM += sectionHeaderHeightMM;
         }
 
-        // Cibler ou injecter dans l'enveloppe .justif-section active
         let targetSection = corrContentArea.querySelector('.justif-section') || corrContentArea;
 
         corrections.forEach(c => {
@@ -372,7 +393,7 @@ function engine() {
 
                 if (corrHeightMM + itemHeightMM > MAX_ZONE_HEIGHT_MM) {
                     pageNum++;
-                    corrPage = createPageElement(titre, pageNum, true, "JUSTIFICATIONS & EXPLICATIONS (Suite)");
+                    corrPage = createPageElement(titre, pageNum, "JUSTIFICATIONS & EXPLICATIONS (Suite)");
                     container.appendChild(corrPage);
                     corrContentArea = corrPage.querySelector('.content-area');
                     
@@ -386,13 +407,12 @@ function engine() {
         });
     }
 
-    // 4. Mise à jour dynamique du nombre total de pages
+    // 4. Calcul final dynamique du nombre total de pages
     const allPages = container.querySelectorAll('.page');
     allPages.forEach((p) => {
         p.querySelector('.p-tot').innerText = allPages.length;
     });
 
-    // Rendu des formules mathématiques éventuelles
     if (typeof MathJax !== 'undefined') {
         MathJax.typesetPromise();
     }
