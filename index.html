@@ -93,7 +93,7 @@
             left: 10mm; 
             right: 10mm;
             padding: 12mm; 
-            padding-bottom: 25mm; /* Évite que le texte chevauche la bordure basse */
+            padding-bottom: 25mm; 
             display: flex; 
             flex-direction: column;
         }
@@ -216,7 +216,7 @@
     <div class="input-group">
         <input type="text" id="titreExamen" placeholder="TITRE DE L'EXAMEN (Ex: CONCOURS POLICE 2026)">
     </div>
-    <textarea id="inputQCM" placeholder="Exemple de format à respecter (laissez une ligne vide entre chaque bloc de question) :&#10;&#10;1) Quelle est la capitale du Burkina Faso ?&#10;A) Bobo-Dioulasso&#10;B) Ouagadougou&#10;C) Koudougou&#10;D) Fada N'Gourma&#10;Réponse: B&#10;Justification: Ouagadougou est la capitale politique et administrative du pays."></textarea>
+    <textarea id="inputQCM" placeholder="Entrez vos questions ici..."></textarea>
     <div class="btns">
         <button class="btn-gen" onclick="engine()">GÉNÉRER LE DOCUMENT PRO</button>
         <button class="btn-pdf" onclick="window.print()">IMPRIMER / PDF</button>
@@ -242,7 +242,7 @@ function createPageElement(titreExamen, pageIndex, customTitle = "") {
             </div>
             ${headerTitre}
             <div class="content-area"></div>
-            <div class="footer-brand"><em>avec Alfa Fisc, visez l'excellence</em></div>
+            <div class="footer-brand"><em>AVEC ALFA FISC, VISEZ L'EXCELLENCE</em></div>
             <div class="page-number-box">Page <span class="p-idx">${pageIndex}</span> / <span class="p-tot"></span></div>
         </div>`;
     return pageDiv;
@@ -257,33 +257,72 @@ function engine() {
     container.innerHTML = "";
     if(!raw.trim()) return;
 
-    const blocks = raw.trim().split(/\n\s*\n/);
+    const lines = raw.split('\n').map(l => l.trim()).filter(l => l !== "");
+    
+    let rawBlocks = [];
+    let currentBlock = null;
+    let autoQuestionCount = 0;
+
+    lines.forEach(line => {
+        let isNumberedQuestion = /^\d+[\.\)\s]/i.test(line) || /^\d+$/i.test(line);
+        let isOption = /^[A-E][\.\)\s]/i.test(line);
+        let isResponse = line.toLowerCase().replace(/[éèêë]/g, 'e').includes("reponse");
+        let isJustification = line.toLowerCase().includes("justification");
+
+        // Si la ligne commence par un chiffre OU s'il s'agit d'un texte libre (non identifié comme option/réponse/justification)
+        // alors on considère cela comme le début d'une nouvelle question
+        if (isNumberedQuestion || (!isOption && !isResponse && !isJustification)) {
+            if (currentBlock) rawBlocks.push(currentBlock);
+            currentBlock = [];
+            
+            // Si la question n'a pas de numéro, on lui en attribue un automatiquement
+            if (!isNumberedQuestion) {
+                autoQuestionCount = rawBlocks.length + 1;
+                line = autoQuestionCount + ". " + line;
+            }
+        }
+        
+        if (currentBlock) {
+            currentBlock.push(line);
+        }
+    });
+    if (currentBlock) rawBlocks.push(currentBlock);
+
     let corrections = [];
     let allQuestionsHtml = [];
 
-    // 1. Analyse et extraction des données
-    blocks.forEach((block) => {
-        const lines = block.split('\n').map(l => l.trim()).filter(l => l !== "");
+    rawBlocks.forEach((blockLines) => {
         let q = "", opts = [], ans = "", justif = "";
         
-        lines.forEach(l => {
-            if(/^\d+[\.\)]/.test(l)) q = l;
-            else if(/^[A-E][\.\)]/.test(l)) opts.push(l);
-            else if(l.toLowerCase().includes("réponse")) {
-                let parts = l.split(':');
-                ans = parts[1] ? parts[1].trim() : "?";
-            }
-            else if(l.toLowerCase().includes("justification")) {
-                let parts = l.split(':');
-                justif = parts[1] ? parts[1].trim() : "";
+        blockLines.forEach(l => {
+            if (/^\d+[\.\)\s]/i.test(l) || /^\d+$/i.test(l)) {
+                q = l;
+            } 
+            else if (/^[A-E][\.\)\s]/i.test(l)) {
+                opts.push(l);
+            } 
+            else if (l.toLowerCase().replace(/[éèêë]/g, 'e').includes("reponse")) {
+                let indexDeuxPoints = l.indexOf(':');
+                if (indexDeuxPoints !== -1) {
+                    ans = l.substring(indexDeuxPoints + 1).trim();
+                } else {
+                    ans = "?";
+                }
+            } 
+            else if (l.toLowerCase().includes("justification")) {
+                let indexDeuxPoints = l.indexOf(':');
+                if (indexDeuxPoints !== -1) {
+                    justif = l.substring(indexDeuxPoints + 1).trim();
+                } else {
+                    justif = "";
+                }
             }
         });
 
-        if(q) {
+        if (q) {
             let qNum = corrections.length + 1;
             corrections.push({ n: qNum, r: ans, j: justif });
             
-            // On sépare chaque sous-élément (le texte de la question d'un côté, et les propositions de l'autre)
             let questionLinesHtml = [];
             questionLinesHtml.push(`<span class="q-text">${q}</span>`);
             opts.forEach(o => {
@@ -293,17 +332,15 @@ function engine() {
         }
     });
 
-    const MAX_ZONE_HEIGHT_MM = 212; // Capacité totale d'impression à l'intérieur du cadre
+    const MAX_ZONE_HEIGHT_MM = 212; 
     let pageNum = 1;
     
     let currentPage = createPageElement(titre, pageNum);
     container.appendChild(currentPage);
     let currentContentArea = currentPage.querySelector('.content-area');
-    let currentHeightMM = 45; // Hauteur initiale consommée par le grand titre cadre en p1
+    let currentHeightMM = 45; 
 
-    // 2. Écoulement continu ligne par ligne pour remplir au maximum le bas de page
     allQuestionsHtml.forEach((elementsArray, qIdx) => {
-        // Enveloppe collective de la question pour conserver l'espacement
         let qBox = document.createElement('div');
         qBox.className = 'question-box';
         currentContentArea.appendChild(qBox);
@@ -312,7 +349,6 @@ function engine() {
             ghost.innerHTML = elHtml;
             const elHeightMM = ghost.offsetHeight * 0.264583;
 
-            // Si cette ligne spécifique dépasse le bas du cadre, on change proprement de page
             if (currentHeightMM + elHeightMM > MAX_ZONE_HEIGHT_MM) {
                 pageNum++;
                 currentPage = createPageElement(titre, pageNum);
@@ -320,29 +356,24 @@ function engine() {
                 currentContentArea = currentPage.querySelector('.content-area');
                 currentHeightMM = 0;
 
-                // On crée une nouvelle enveloppe sur la nouvelle page pour recevoir la suite de la question
                 qBox = document.createElement('div');
                 qBox.className = 'question-box';
                 currentContentArea.appendChild(qBox);
             }
 
-            // Injection immédiate de l'élément (Question ou Option)
             qBox.innerHTML += elHtml;
             currentHeightMM += elHeightMM;
         });
 
-        // Ajouter une marge de séparation après chaque bloc QCM
         currentHeightMM += 6; 
     });
 
-    // 3. Distribution continue de la Correction (Grilles + Justifications)
     pageNum++;
     let corrPage = createPageElement(titre, pageNum, "PROPOSITION DE CORRECTION");
     container.appendChild(corrPage);
     let corrContentArea = corrPage.querySelector('.content-area');
     let corrHeightMM = 45;
 
-    // Génération continue des tableaux de grilles
     for (let i = 0; i < corrections.length; i += 10) {
         const chunk = corrections.slice(i, i + 10);
         let tableHtml = `<table class="corr-table"><tr class="row-num">`;
@@ -365,7 +396,6 @@ function engine() {
         corrHeightMM += tableHeightMM + 5;
     }
 
-    // Extraction et distribution continue ligne par ligne des justifications
     let hasJustifications = corrections.some(c => c.j);
     if (hasJustifications) {
         let sectionHeaderHtml = `<div class="justif-section"><div class="justif-title">Justifications et Explications</div></div>`;
@@ -407,7 +437,6 @@ function engine() {
         });
     }
 
-    // 4. Calcul final dynamique du nombre total de pages
     const allPages = container.querySelectorAll('.page');
     allPages.forEach((p) => {
         p.querySelector('.p-tot').innerText = allPages.length;
